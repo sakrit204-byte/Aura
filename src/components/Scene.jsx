@@ -19,6 +19,7 @@ export default function Scene() {
   const [flavorIndex, setFlavorIndex] = useState(0);
   const touchStart = useRef(0);
 
+  const isDragging = useRef(false);
   let isAnimating = false;
 
   // 🔥 ADD TO CART ANIMATION
@@ -48,7 +49,7 @@ export default function Scene() {
 
     document.body.appendChild(img);
 
-    const cart = document.getElementById('global-cart'); // ✅ FIXED ID
+    const cart = document.getElementById('global-cart');
     if (!cart) return;
 
     const cartRect = cart.getBoundingClientRect();
@@ -68,35 +69,69 @@ export default function Scene() {
     }, 800);
   }
 
-  // 🔗 EXPOSE TO HOME
+  // 🔗 expose to global
   useEffect(() => {
     window.addToCart3D = animateToCart;
   }, []);
 
-  // SWIPE
+  // ✅ SWIPE ONLY ON HERO SECTION
   useEffect(() => {
-    const handleStart = (e) => (touchStart.current = e.clientX || e.touches?.[0].clientX);
-    const handleEnd = (e) => {
-      const endX = e.clientX || e.changedTouches?.[0].clientX;
-      const distance = endX - touchStart.current;
-      if (distance > 50) setFlavorIndex((prev) => (prev + 1) % FLAVORS.length);
-      if (distance < -50) setFlavorIndex((prev) => (prev - 1 + FLAVORS.length) % FLAVORS.length);
-    };
+    const interval = setInterval(() => {
+      const target = window.heroSection;
+      if (!target) return;
 
-    window.addEventListener('mousedown', handleStart);
-    window.addEventListener('mouseup', handleEnd);
-    window.addEventListener('touchstart', handleStart);
-    window.addEventListener('touchend', handleEnd);
+      clearInterval(interval);
 
-    return () => {
-      window.removeEventListener('mousedown', handleStart);
-      window.removeEventListener('mouseup', handleEnd);
-      window.removeEventListener('touchstart', handleStart);
-      window.removeEventListener('touchend', handleEnd);
-    };
+      const handleStart = (e) => {
+        isDragging.current = true;
+        touchStart.current = e.clientX || e.touches?.[0].clientX;
+      };
+
+      const handleMove = (e) => {
+        if (!isDragging.current) return;
+
+        const currentX = e.clientX || e.touches?.[0].clientX;
+        const distance = currentX - touchStart.current;
+
+        if (distance > 80) {
+          setFlavorIndex((prev) => (prev + 1) % FLAVORS.length);
+          touchStart.current = currentX;
+        }
+
+        if (distance < -80) {
+          setFlavorIndex((prev) => (prev - 1 + FLAVORS.length) % FLAVORS.length);
+          touchStart.current = currentX;
+        }
+      };
+
+      const handleEnd = () => {
+        isDragging.current = false;
+      };
+
+      target.addEventListener("mousedown", handleStart);
+      target.addEventListener("mousemove", handleMove);
+      target.addEventListener("mouseup", handleEnd);
+
+      target.addEventListener("touchstart", handleStart);
+      target.addEventListener("touchmove", handleMove);
+      target.addEventListener("touchend", handleEnd);
+
+      // cleanup
+      return () => {
+        target.removeEventListener("mousedown", handleStart);
+        target.removeEventListener("mousemove", handleMove);
+        target.removeEventListener("mouseup", handleEnd);
+
+        target.removeEventListener("touchstart", handleStart);
+        target.removeEventListener("touchmove", handleMove);
+        target.removeEventListener("touchend", handleEnd);
+      };
+    }, 100);
+
+    return () => clearInterval(interval);
   }, []);
 
-  // SHADER
+  // 🎨 SHADER
   const fluidMaterial = useMemo(() => ({
     uniforms: {
       uTime: { value: 0 },
@@ -129,30 +164,39 @@ export default function Scene() {
     `
   }), []);
 
+  // 🎬 FRAME LOOP
   useFrame((state) => {
-    const offset = scroll.offset;
-    const prevX = group.current.position.x;
-    const targetX = offset * -2;
-    const velocity = Math.abs(targetX - prevX);
+  const offset = scroll.offset;
 
-    group.current.position.x = THREE.MathUtils.lerp(prevX, targetX, 0.1);
-    group.current.rotation.y = THREE.MathUtils.lerp(
-      group.current.rotation.y,
-      offset * Math.PI * 2 + (state.mouse.x * 0.2),
-      0.1
-    );
+  const prevX = group.current.position.x;
+  const targetX = offset * -2;
+  const velocity = Math.abs(targetX - prevX);
 
-    const targetColor = new THREE.Color(FLAVORS[flavorIndex].color);
-    fluidMaterial.uniforms.uColor.value.lerp(targetColor, 0.05);
+  // ✅ horizontal movement (scroll)
+  group.current.position.x = THREE.MathUtils.lerp(prevX, targetX, 0.1);
 
-    fluidMaterial.uniforms.uTime.value = state.clock.elapsedTime;
-    fluidMaterial.uniforms.uIntensity.value = THREE.MathUtils.lerp(
-      fluidMaterial.uniforms.uIntensity.value,
-      velocity * 15.0 + 0.3,
-      0.1
-    );
-  });
+  // ✅ COMBINED ROTATION (scroll + flavor + mouse)
+  const scrollRotation = offset * Math.PI * 2;
+  const flavorRotation = flavorIndex * (Math.PI / 6); // subtle effect
 
+  group.current.rotation.y = THREE.MathUtils.lerp(
+    group.current.rotation.y,
+    scrollRotation + flavorRotation + (state.mouse.x * 0.2),
+    0.1
+  );
+
+  // 🎨 smooth color transition
+  const targetColor = new THREE.Color(FLAVORS[flavorIndex].color);
+  fluidMaterial.uniforms.uColor.value.lerp(targetColor, 0.08);
+
+  // 🌊 liquid animation
+  fluidMaterial.uniforms.uTime.value = state.clock.elapsedTime;
+  fluidMaterial.uniforms.uIntensity.value = THREE.MathUtils.lerp(
+    fluidMaterial.uniforms.uIntensity.value,
+    velocity * 15.0 + 0.3,
+    0.1
+  );
+});
   return (
     <>
       <color attach="background" args={['#ffffff']} />
@@ -188,7 +232,7 @@ export default function Scene() {
             </mesh>
           </group>
 
-          {/* ✅ FIXED LABEL (ATTACHED TO SURFACE) */}
+          {/* LABEL */}
           <group position={[0, -0.2, 0.65]}>
             <Text fontSize={0.12} color="black" anchorX="center">
               AURA
