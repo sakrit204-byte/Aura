@@ -1,0 +1,13 @@
+.hero-text {
+  font-family: 'Playfair Display', serif; /* Or any premium font */
+  pointer-events: none; /* Let the mouse click "through" the text to the 3D bottle */
+}
+
+section {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 10%;
+}
