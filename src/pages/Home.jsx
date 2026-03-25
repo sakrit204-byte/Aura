@@ -8,88 +8,77 @@ import Scene from '../components/Scene';
 export default function Home() {
   const [cartCount, setCartCount] = useState(0);
 
-  const handleFlyToCart = (e) => {
-    const btn = e.currentTarget;
-    // We look for the cart icon in the real DOM (outside the Canvas)
+  const handleAddToCart = () => {
+    if (window.addToCart3D) {
+      window.addToCart3D();
+    }
+
+    setCartCount(prev => prev + 1);
+
     const cart = document.getElementById('global-cart');
-    if (!cart) return;
-
-    const rect = btn.getBoundingClientRect();
-    const cartRect = cart.getBoundingClientRect();
-    const flyer = document.createElement('div');
-
-    flyer.style.cssText = `
-      position: fixed;
-      top: ${rect.top}px;
-      left: ${rect.left + rect.width / 2}px;
-      width: 20px;
-      height: 40px;
-      background: #8352fd;
-      border-radius: 4px;
-      z-index: 10000;
-      pointer-events: none;
-      box-shadow: 0 0 15px #8352fd;
-      transition: all 1.5s cubic-bezier(0.19, 1, 0.22, 1);
-    `;
-
-    document.body.appendChild(flyer);
-
-    requestAnimationFrame(() => {
-      flyer.style.top = `${cartRect.top + 20}px`;
-      flyer.style.left = `${cartRect.left + 20}px`;
-      flyer.style.transform = `scale(5) rotate(720deg)`;
-      flyer.style.opacity = '0';
-    });
-
-    setTimeout(() => {
-      flyer.remove();
-      setCartCount(prev => prev + 1);
-      cart.style.transform = 'scale(1.3)';
+    if (cart) {
+      cart.style.transform = 'scale(1.25)';
       setTimeout(() => (cart.style.transform = 'scale(1)'), 200);
-    }, 800);
+    }
   };
 
   return (
     <ScrollControls pages={3} damping={0.2}>
-      {/* 3D CONTENT: This is safe inside the Canvas */}
       <Scene />
 
-      {/* HTML CONTENT: Must be wrapped in <Scroll html> to be inside Canvas */}
       <Scroll html style={{ width: '100%' }}>
-        
-        {/* We use a Portal-like trick: The Cart UI is moved out to App.jsx 
-            but we can still trigger the count logic here if we wanted. 
-            However, for the sake of "NOT BREAKING," we will put the 
-            Cart UI inside the Scroll layer so it's legal. */}
-        
         <Hero />
         <Features />
-        
+
         <section style={{ 
           height: '100vh', 
           display: 'flex', 
           flexDirection: 'column',
           alignItems: 'center', 
           justifyContent: 'center',
-          color: 'white' 
+          color: '#111'
         }}>
-          <h2 style={{ fontSize: '3vw', marginBottom: '2rem', fontFamily: 'serif' }}>
+          <h2 style={{ 
+            fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', 
+            marginBottom: '2rem', 
+            fontFamily: "'Playfair Display', serif"
+          }}>
             Elevate Your Vibe.
           </h2>
+
           <button 
-            onClick={handleFlyToCart}
+            onClick={handleAddToCart}
             style={{ 
-              background: 'white', 
-              color: 'black', 
-              padding: '15px 40px', 
+              background: '#111',
+              color: '#fff', 
+              padding: '16px 44px', 
               borderRadius: '50px',
               border: 'none',
-              fontWeight: 'bold',
+              letterSpacing: '0.15em',
               cursor: 'pointer'
             }}
           >
             ADD TO CART
           </button>
+
+          <div 
+            id="global-cart"
+            style={{
+              position: 'fixed',
+              top: '25px',
+              right: '40px',
+              fontSize: '1rem',
+              fontWeight: '500',
+              color: '#111',
+              background: 'rgba(255,255,255,0.8)',
+              padding: '10px 18px',
+              borderRadius: '30px',
+              zIndex: 10000,
+              transition: 'transform 0.2s ease'
+            }}
+          >
+            🛒 {cartCount}
+          </div>
         </section>
       </Scroll>
     </ScrollControls>
